@@ -15,6 +15,7 @@
 #include <wquickcursor.h>
 #include <woutputrenderwindow.h>
 #include <wqmldynamiccreator.h>
+#include <WXdgOutput>
 
 #include <qwbackend.h>
 #include <qwdisplay.h>
@@ -55,11 +56,20 @@ Helper::Helper(QObject *parent)
     , m_cursor(new WQuickCursor(this))
     , m_seat(new WSeat())
     , m_outputCreator(new WQmlCreator(this))
+    , m_xdgoutputmanager(new WXdgOutputManager())
+    , m_xwayland_xdgoutputmanager(new WXdgOutputManager())
 {
     m_seat->setEventFilter(this);
     m_seat->setCursor(m_cursor);
     m_cursor->setThemeName(getenv("XCURSOR_THEME"));
     m_cursor->setLayout(m_outputLayout);
+
+    m_xwayland_xdgoutputmanager->setLayout(m_outputLayout);
+    m_xwayland_xdgoutputmanager->setScaleOverride(1.0);
+    m_xdgoutputmanager->setTargetClients(m_xwayland_xdgoutputmanager->targetClients(), false);
+
+    m_xdgoutputmanager->setLayout(m_outputLayout);
+    m_xdgoutputmanager->setTargetClients(m_xwayland_xdgoutputmanager->targetClients(),true);
 }
 
 void Helper::initProtocols(WServer *server, WOutputRenderWindow *window, QQmlEngine *qmlEngine)
