@@ -71,6 +71,12 @@ public:
     explicit Helper(QObject *parent = nullptr);
     ~Helper();
 
+    enum class ShowMode {
+        Copy,
+        Extension
+    };
+    Q_ENUM(ShowMode)
+
     static Helper *instance();
 
     QmlEngine *qmlEngine() const;
@@ -93,6 +99,9 @@ public:
     float animationSpeed() const;
     void setAnimationSpeed(float newAnimationSpeed);
 
+    Q_INVOKABLE bool addOutput();
+    Q_INVOKABLE void setShowMode(WOutput *output, ShowMode mode);
+
 public Q_SLOTS:
     void activeSurface(SurfaceWrapper *wrapper);
 
@@ -110,6 +119,7 @@ private:
     void enableOutput(WOutput *output);
 
     int indexOfOutput(WOutput *output) const;
+    void removeOutput(WOutput *output);
 
     void setOutputProxy(Output *output);
 
@@ -163,6 +173,7 @@ private:
     SurfaceContainer *m_popupContainer = nullptr;
     int m_currentUserId = -1;
     float m_animationSpeed = 1.0;
+    ShowMode m_showMode;
 };
 
 Q_DECLARE_OPAQUE_POINTER(RootSurfaceContainer*)

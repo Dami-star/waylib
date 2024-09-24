@@ -39,6 +39,7 @@
 #include <wtoplevelsurface.h>
 #include <wlayersurface.h>
 #include <wxdgdecorationmanager.h>
+#include <wquicktextureproxy.h>
 
 #include <qwbackend.h>
 #include <qwdisplay.h>
@@ -159,20 +160,16 @@ void Helper::init()
     connect(m_backend, &WBackend::outputAdded, this, [this] (WOutput *output) {
         allowNonDrmOutputAutoChangeMode(output);
         auto o = Output::createPrimary(output, qmlEngine(), this);
-        o->outputItem()->setParentItem(m_renderWindow->contentItem());
         o->outputItem()->stackBefore(m_surfaceContainer);
         m_outputList.append(o);
+        m_showMode = ShowMode::Extension;
 
         m_surfaceContainer->addOutput(o);
         enableOutput(output);
     });
 
     connect(m_backend, &WBackend::outputRemoved, this, [this] (WOutput *output) {
-        auto index = indexOfOutput(output);
-        Q_ASSERT(index >= 0);
-        const auto o = m_outputList.takeAt(index);
-        m_surfaceContainer->removeOutput(o);
-        delete o;
+        removeOutput(output);
     });
 
     auto *xdgShell = m_server->attach<WXdgShell>();
@@ -640,6 +637,53 @@ Output *Helper::getOutput(WOutput *output) const
             return o;
     }
     return nullptr;
+}
+
+bool Helper::addOutput()
+{
+    qw_output *newOutput = nullptr;
+    qobject_cast<qw_multi_backend*>(m_backend->handle())->for_each_backend([] (wlr_backend *backend, void *) {
+        qw_output *newOutput = nullptr;
+        if (auto x11 = qw_x11_backend::from(backend)) {
+            newOutput = qw_output::from(x11->output_create());
+        } else if (auto wayland = qw_wayland_backend::from(backend)) {
+            newOutput = qw_output::from(wayland->output_create());
+        }
+    }, nullptr);
+
+    return newOutput ? true : false;
+}
+
+void Helper::setShowMode(WOutput *output, ShowMode mode)
+{
+    if (mode != m_showMode)
+        m_showMode = mode;
+
+    if (mode == ShowMode::Copy) {
+        removeOutput(output);
+
+        Output *out = Output::createCopy(output, m_outputList.at(0), qmlEngine(), this);
+
+        WOutputViewport *viewportPrimary = m_outputList.at(0)->outputItem()->findChild<WOutputViewport*>({}, Qt::FindDirectChildrenOnly);
+        WOutputViewport *viewportCopy = out->outputItem()->findChild<WOutputViewport*>({}, Qt::FindDirectChildrenOnly);
+        Q_ASSERT(viewportCopy);
+        QList<WOutputLayer *>  m_hardwareLayersOfPrimaryOutput = viewportPrimary->hardwareLayers();
+
+        auto textureProxy = out->outputItem()->findChild<WQuickTextureProxy*>();
+        Q_ASSERT(textureProxy);
+        for (auto layer : std::as_const(m_hardwareLayersOfPrimaryOutput))
+            m_renderWindow->attach(layer, viewportCopy, viewportPrimary, textureProxy);
+    }
+
+}
+
+void Helper::removeOutput(WOutput *output)
+{
+    auto index = indexOfOutput(output);
+    Q_ASSERT(index >= 0);
+    const auto o = m_outputList.takeAt(index);
+    m_surfaceContainer->removeOutput(o);
+    o->deleteLater();
 }
 
 void Helper::setOutputProxy(Output *output)

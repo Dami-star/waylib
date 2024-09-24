@@ -111,6 +111,30 @@ Item {
                 text: "Next Workspace"
                 onClicked: Helper.workspace.switchToNext();
             }
+
+            ToolButton {
+                text: "Output"
+
+                onClicked: outputMenu.popup()
+
+                Menu {
+                    id: outputMenu
+
+                    MenuItem {
+                        text: "Add Output"
+                        onClicked: {
+                            Helper.addOutput()
+                        }
+                    }
+
+                    MenuItem {
+                        text: "Copy Mode"
+                        onClicked: {
+                            Helper.setShowMode(output.output, Helper.ShowMode.Copy)
+                        }
+                    }
+                }
+            }
         }
     }
 }
