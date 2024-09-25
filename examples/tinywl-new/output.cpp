@@ -12,6 +12,7 @@
 #include <wxdgsurface.h>
 #include <wlayersurface.h>
 #include <winputpopupsurface.h>
+#include <woutputviewport.h>
 
 #include <QQmlEngine>
 
@@ -37,6 +38,8 @@ Output *Output::createPrimary(WOutput *output, QQmlEngine *engine, QObject *pare
     o->connect(outputItem, &WOutputItem::geometryChanged, o, &Output::layoutAllSurfaces);
 
     auto contentItem = Helper::instance()->window()->contentItem();
+    outputItem->setParentItem(contentItem);
+
     o->m_taskBar = Helper::instance()->qmlEngine()->createTaskBar(o, contentItem);
     o->m_taskBar->setZ(RootSurfaceContainer::TaskBarZOrder);
 
@@ -50,7 +53,13 @@ Output *Output::createPrimary(WOutput *output, QQmlEngine *engine, QObject *pare
 Output *Output::createCopy(WOutput *output, Output *proxy, QQmlEngine *engine, QObject *parent)
 {
     QQmlComponent delegate(engine, "Tinywl", "CopyOutput");
-    QObject *obj = delegate.create(engine->rootContext());
+
+    WOutputViewport *viewport = proxy->outputItem()->findChild<WOutputViewport*>({}, Qt::FindDirectChildrenOnly);
+    QObject *obj = delegate.createWithInitialProperties({
+                                                         {"targetOutputItem", QVariant::fromValue(proxy->outputItem())},
+                                                         {"targetViewport", QVariant::fromValue(viewport)},
+                                                         }, engine->rootContext());
+
     WOutputItem *outputItem = qobject_cast<WOutputItem *>(obj);
     Q_ASSERT(outputItem);
     QQmlEngine::setObjectOwnership(outputItem, QQmlEngine::CppOwnership);
@@ -60,6 +69,9 @@ Output *Output::createCopy(WOutput *output, Output *proxy, QQmlEngine *engine, Q
     o->m_type = Type::Proxy;
     o->m_proxy = proxy;
     obj->setParent(o);
+
+    auto contentItem = Helper::instance()->window()->contentItem();
+    outputItem->setParentItem(contentItem);
 
     return o;
 }
@@ -82,6 +94,11 @@ Output::~Output()
     if (m_menuBar) {
         delete m_menuBar;
         m_menuBar = nullptr;
+    }
+
+    if (m_item) {
+        delete m_item;
+        m_item = nullptr;
     }
 }
 

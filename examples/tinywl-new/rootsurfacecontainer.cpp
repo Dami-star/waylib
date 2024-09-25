@@ -44,6 +44,11 @@ RootSurfaceContainer::RootSurfaceContainer(QQuickItem *parent)
     });
 
     connect(m_outputLayout, &WOutputLayout::notify_change, this, [this] {
+
+        // The default layout is horizontal to the right
+        if (m_currentOutput && m_outputLayout->implicitWidth())
+            m_currentOutput->outputItem()->setX(m_outputLayout->implicitWidth());
+
         ensureCursorVisible();
 
         // for (auto s : m_surfaceContainer->surfaces()) {
@@ -96,6 +101,7 @@ void RootSurfaceContainer::destroyForSurface(WSurface *surface)
 
 void RootSurfaceContainer::addOutput(Output *output)
 {
+    m_currentOutput = output;
     m_outputModel->addObject(output);
     m_outputLayout->autoAdd(output->output());
     if (!m_primaryOutput)
@@ -106,6 +112,9 @@ void RootSurfaceContainer::addOutput(Output *output)
 
 void RootSurfaceContainer::removeOutput(Output *output)
 {
+    if (m_currentOutput == output)
+        m_currentOutput = nullptr;
+
     m_outputModel->removeObject(output);
     SurfaceContainer::removeOutput(output);
 

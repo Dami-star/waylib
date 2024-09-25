@@ -71,6 +71,12 @@ public:
     explicit Helper(QObject *parent = nullptr);
     ~Helper();
 
+    enum class ShowMode {
+        Copy,
+        Extension
+    };
+    Q_ENUM(ShowMode)
+
     static Helper *instance();
 
     QmlEngine *qmlEngine() const;
@@ -92,6 +98,9 @@ public:
 
     float animationSpeed() const;
     void setAnimationSpeed(float newAnimationSpeed);
+
+    Q_INVOKABLE bool addOutput();
+    Q_INVOKABLE void setShowMode(ShowMode mode);
 
 public Q_SLOTS:
     void activeSurface(SurfaceWrapper *wrapper);
@@ -150,6 +159,7 @@ private:
 
     // privaet data
     QList<Output*> m_outputList;
+    QList<Output*> m_outputCopyList;
 
     QPointer<SurfaceWrapper> m_keyboardFocusSurface;
     QPointer<SurfaceWrapper> m_activatedSurface;

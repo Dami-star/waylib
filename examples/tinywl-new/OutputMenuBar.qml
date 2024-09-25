@@ -8,6 +8,7 @@ import Tinywl
 
 Item {
     required property PrimaryOutput output
+    property bool modeSwitch: false
 
     width: output.width
     height: menuBar.contentHeight
@@ -110,6 +111,36 @@ Item {
             ToolButton {
                 text: "Next Workspace"
                 onClicked: Helper.workspace.switchToNext();
+            }
+
+            ToolButton {
+                text: "Output"
+
+                onClicked: outputMenu.popup()
+
+                Menu {
+                    id: outputMenu
+
+                    MenuItem {
+                        text: "Add Output"
+                        onClicked: {
+                            if (!modeSwitch)
+                                Helper.addOutput()
+                        }
+                    }
+
+                    MenuItem {
+                        text: modeSwitch ? "Extension Mode" : "Copy Mode"
+                        onClicked: {
+                            if (modeSwitch)
+                                Helper.setShowMode(Helper.ShowMode.Extension)
+                            else
+                                Helper.setShowMode(Helper.ShowMode.Copy)
+
+                            modeSwitch = !modeSwitch
+                        }
+                    }
+                }
             }
         }
     }

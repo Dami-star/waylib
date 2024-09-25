@@ -94,6 +94,7 @@ private:
 
     WOutputLayout *m_outputLayout = nullptr;
     OutputListModel *m_outputModel = nullptr;
+    Output * m_currentOutput = nullptr;
     QPointer<Output> m_primaryOutput;
     WCursor *m_cursor = nullptr;
     WSurfaceItem *m_dargSurfaceItem = nullptr;

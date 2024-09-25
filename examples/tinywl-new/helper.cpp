@@ -39,6 +39,7 @@
 #include <wtoplevelsurface.h>
 #include <wlayersurface.h>
 #include <wxdgdecorationmanager.h>
+#include <wquicktextureproxy.h>
 
 #include <qwbackend.h>
 #include <qwdisplay.h>
@@ -159,7 +160,6 @@ void Helper::init()
     connect(m_backend, &WBackend::outputAdded, this, [this, wOutputManager] (WOutput *output) {
         allowNonDrmOutputAutoChangeMode(output);
         auto o = Output::createPrimary(output, qmlEngine(), this);
-        o->outputItem()->setParentItem(m_renderWindow->contentItem());
         o->outputItem()->stackBefore(m_surfaceContainer);
         m_outputList.append(o);
         wOutputManager->newOutput(output);
@@ -642,6 +642,66 @@ Output *Helper::getOutput(WOutput *output) const
             return o;
     }
     return nullptr;
+}
+
+bool Helper::addOutput()
+{
+    qw_output *newOutput = nullptr;
+    qobject_cast<qw_multi_backend*>(m_backend->handle())->for_each_backend([] (wlr_backend *backend, void *) {
+        qw_output *newOutput = nullptr;
+        if (auto x11 = qw_x11_backend::from(backend)) {
+            newOutput = qw_output::from(x11->output_create());
+        } else if (auto wayland = qw_wayland_backend::from(backend)) {
+            newOutput = qw_output::from(wayland->output_create());
+        }
+    }, nullptr);
+
+    return newOutput ? true : false;
+}
+
+void Helper::setShowMode(ShowMode mode)
+{
+    if (mode == ShowMode::Copy) {
+        if (m_outputList.length() < 2)
+            return;
+
+        for (int i = 1; i < m_outputList.size();) {
+            Output *o = Output::createCopy(m_outputList.at(i)->output(), m_outputList.at(0), qmlEngine(), this);
+            WOutputViewport *viewportPrimary = m_outputList.at(0)->outputItem()->findChild<WOutputViewport*>({}, Qt::FindDirectChildrenOnly);
+            WOutputViewport *viewportCopy = o->outputItem()->findChild<WOutputViewport*>({}, Qt::FindDirectChildrenOnly);
+            Q_ASSERT(viewportCopy);
+            auto textureProxy = o->outputItem()->findChild<WQuickTextureProxy*>();
+            Q_ASSERT(textureProxy);
+
+            m_outputCopyList.append(o);
+
+            QList<WOutputLayer *>  m_hardwareLayersOfPrimaryOutput = viewportPrimary->hardwareLayers();
+            for (auto layer : std::as_const(m_hardwareLayersOfPrimaryOutput))
+                m_renderWindow->attach(layer, viewportCopy, viewportPrimary, textureProxy);
+
+
+            m_surfaceContainer->removeOutput(m_outputList.at(i));
+            m_outputList.at(i)->deleteLater();
+            m_outputList.removeAt(i);
+        }
+    } else if(mode == ShowMode::Extension) {
+        if (m_outputCopyList.isEmpty())
+            return;
+
+        for (auto output : std::as_const(m_outputCopyList)) {
+            auto o = Output::createPrimary(output->output(), qmlEngine(), this);
+            o->outputItem()->stackBefore(m_surfaceContainer);
+            m_outputList.append(o);
+
+            m_surfaceContainer->addOutput(o);
+            enableOutput(o->output());
+
+            output->deleteLater();
+        }
+
+        m_outputCopyList.clear();
+    }
+
 }
 
 void Helper::setOutputProxy(Output *output)
